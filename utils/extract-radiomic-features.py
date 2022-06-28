@@ -1,7 +1,6 @@
 import argparse
 import json
 import time
-from tkinter import N
 import numpy as np
 import itk
 import SimpleITK as sitk
