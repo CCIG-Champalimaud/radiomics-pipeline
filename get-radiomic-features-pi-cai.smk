@@ -6,26 +6,20 @@ def shift(l,idxs):
     l = [l[i] for i in idxs]
     return l
 
-input_path = "../../data/PI-CAI/dataset_resized_corrected"
+input_path = config["input_path"]
 output_paths = {
-    "radiomic_features":"../../data/PI-CAI/radiomic_features",
-    "dataset_information":"dataset_information",
-    "aggregated_features":"radiomic_features",
-    "masks":"../../data/PI-CAI/labels/csPCa_lesion_delineations/human_expert/original"}
+    "radiomic_features": config["radiomic_features_path"],
+    "dataset_information": config["dataset_information_path"],
+    "aggregated_features": config["aggregated_features_path"],
+    "masks": config["masks_path"]}
 
-config_files = [
-    "config-feature-extraction/config-t2w.yaml",
-    "config-feature-extraction/config-adc.yaml",
-    "config-feature-extraction/config-dwi.yaml"]
+config_files = config["config_files"]
 
 for k in output_paths:
     os.makedirs(output_paths[k],exist_ok=True)
 
-patterns = {
-    "T2W":"*/*/*_t2w.mha",
-    "ADC":"*/*/*_adc.mha",
-    "HBV":"*/*/*_hbv.mha"}
-pattern_mask = "*/*nii.gz"
+patterns = config["patterns"]
+pattern_mask = config["mask_pattern"]
 
 mask_dict = {}
 for path in glob(os.path.join(output_paths["masks"],pattern_mask)):

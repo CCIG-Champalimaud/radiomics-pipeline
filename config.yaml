@@ -1,0 +1,15 @@
+---
+input_path: "../../data/PI-CAI/dataset_resized_corrected"
+radiomic_features_path: "../../data/PI-CAI/radiomic_features"
+dataset_information_path: "dataset_information"
+aggregated_features_path: "radiomic_features"
+masks_path: "../../data/PI-CAI/labels/csPCa_lesion_delineations/human_expert/original"
+config_files: 
+  - "config-feature-extraction/config-t2w.yaml"
+  - "config-feature-extraction/config-adc.yaml"
+  - "config-feature-extraction/config-dwi.yaml"
+patterns:
+  T2W: "*/*/*_t2w.mha"
+  ADC: "*/*/*_adc.mha"
+  HBV: "*/*/*_hbv.mha"
+mask_pattern: "*/*nii.gz"
