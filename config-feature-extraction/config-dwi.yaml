@@ -1,0 +1,45 @@
+featureClass:
+    firstorder: 
+    glcm: 
+    gldm: 
+    glrlm: 
+    glszm: 
+    ngtdm: 
+    shape: 
+imageType:
+    Exponential:
+        binWidth: 0.169740463959203
+        voxelArrayShift: 0
+    Gradient:
+        binWidth: 0.05026422023773194
+        voxelArrayShift: 0
+    LBP2D:
+        binWidth: 0.09
+        voxelArrayShift: 0
+    LoG:
+        binWidth: 0.149526948928833
+        sigma:
+        - 1
+        voxelArrayShift: 3
+    Logarithm:
+        binWidth: 0.23923374707019687
+        voxelArrayShift: 20
+    Original:
+        binWidth: 0.19616456801754278
+        voxelArrayShift: 4
+    Square:
+        binWidth: 0.17758638386182377
+        voxelArrayShift: 0
+    SquareRoot:
+        binWidth: 0.17758638386182377
+        voxelArrayShift: 0
+    Wavelet:
+        binWidth: 0.169740463959203
+        voxelArrayShift: 0
+setting:
+    binWidth: 0.19616456801754278
+    force2D: true
+    normalize: true
+    normalizeScale: 1
+    voxelArrayShift: 4
+
