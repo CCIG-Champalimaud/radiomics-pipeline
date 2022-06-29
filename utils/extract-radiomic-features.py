@@ -10,9 +10,9 @@ from radiomics import setVerbosity
 
 setVerbosity(40)
 
-def print_verbose(string,verbose):
+def print_verbose(*string,verbose):
     if verbose == True:
-        print(string)
+        print(' '.join(string))
 
 def correct_bias_field(image,n_fitting_levels,n_iter,shrink_factor=1):
     image_ = image
@@ -232,6 +232,9 @@ if __name__ == "__main__":
         help="Assumes that if fixed and moving images/masks have the same shape \
             they are already co-registered (or equivalent). Only for \
             registration == 'first'.")
+    parser.add_argument(
+        '--verbose',dest="verbose",action="store_true",default=False,
+        help="Activates verbosity.")
     
     args = parser.parse_args()
 
@@ -245,7 +248,8 @@ if __name__ == "__main__":
     
     unique_labels = np.unique(sitk.GetArrayFromImage(mask))
     if len(unique_labels) == 1:
-        print("No lesions in mask!")
+        print_verbose(
+            "No lesions in mask!",verbose=args.verbose)
         output_dict = {
             "path":args.input_paths,
             "lesion_center":[np.nan for _ in args.input_paths],
@@ -269,9 +273,9 @@ if __name__ == "__main__":
     if len(np.unique(sitk.GetArrayFromImage(mask_))) != len(unique_labels):
         # if NN sampling accidentally eliminates labels (can happen when 
         # objects are very small) we resample 
-        print("Repeating mask resampling to avoid losing lesions")
+        print_verbose("Repeating mask resampling to avoid losing lesions",
+                      verbose=args.verbose)
         mask_ = resample_label(mask,args.target_spacing,thr=0.35)
-        print(mask.GetSize(),np.unique(sitk.GetArrayFromImage(mask),return_counts=True))
         mask_resampling = "linear"
     else:
         mask_resampling = "nearest_neighbour"
@@ -306,12 +310,16 @@ if __name__ == "__main__":
 
     reg_mask = True
     if args.registration == "mask":
-        print("Registering all images/mask to the one corresponding to the mask")
+        print_verbose(
+            "Registering all images/mask to the one corresponding to the mask",
+            verbose=args.verbose)
         c = same_size_as_mask[0]
         no_reg = same_size_as_mask
 
     elif args.registration == "largest":
-        print("Registering all images/mask to the largest image")
+        print_verbose(
+            "Registering all images/mask to the largest image",
+            verbose=args.verbose)
         no_reg = np.argmax(
             [np.prod(all_sequences[k].shape) for k in all_sequences])
         try:
@@ -321,7 +329,9 @@ if __name__ == "__main__":
             c = no_reg[0]
     
     elif args.registration == "first":
-        print("Registering all images/mask to the first image")
+        print_verbose(
+            "Registering all images/mask to the first image",
+            verbose=args.verbose)
         no_reg = [0]
         c = no_reg[0]
         if args.assume_same == True:
@@ -331,7 +341,9 @@ if __name__ == "__main__":
                     no_reg.append(k)
 
     elif args.registration == "none":
-        print("No registration, only resampling")
+        print_verbose(
+            "No registration, only resampling",
+            verbose=args.verbose)
         no_reg = [i for i in all_sequences]
         c = 0
         fixed = all_sequences[c]
@@ -376,7 +388,9 @@ if __name__ == "__main__":
                 stop_reg = True
             except:
                 if reg_attempts > 1:
-                    print("Translation+rigid body registration failed, attempting only translation registration...")
+                    print_verbose(
+                        "Translation+rigid body registration failed, attempting only translation registration...",
+                        verbose=args.verbose)
                     parameter_object = itk.ParameterObject.New()
                     parameter_map_translation = parameter_object.GetDefaultParameterMap(
                         'translation',resolutions)
@@ -438,9 +452,15 @@ if __name__ == "__main__":
         fe = featureextractor.RadiomicsFeatureExtractor(config)
         path = input_dict[k]
         for i,(lesion_mask,center,cl) in enumerate(yield_lesion_masks(mask)):
-            print("Extracting features for lesion {} in {}".format(i,path))
-            print("\tConfig file:",config)
-            print("\tCenter: {}\n\tClass: {}".format(center,cl))
+            print_verbose(
+                "Extracting features for lesion {} in {}".format(i,path),
+                verbose=args.verbose)
+            print_verbose(
+                "\tConfig file: "+config,
+                verbose=args.verbose)
+            print_verbose(
+                "\tCenter: {}\n\tClass: {}".format(center,cl),
+                verbose=args.verbose)
             reg_out_str = '_'.join(reg_out) if len(reg_out)>0 else "failed"
             time_c = time.time()
             features = fe.execute(sequence,lesion_mask)
@@ -462,12 +482,16 @@ if __name__ == "__main__":
                 else:
                     output_dict[key] = [value]
             time_d = time.time()
-            print("\tTime elapsed in this lesion:",time_d-time_c)
+            print_verbose(
+                "\tTime elapsed in this lesion: {}".format(time_d-time_c),
+                verbose=args.verbose)
 
     output = json.dumps(output_dict,indent=2)
     with open(args.output_path,'w') as o:
         o.write(output)
     
     time_b = time.time()
-    print("Done!")
-    print("Total time elapsed:",time_b-time_a)
+    print_verbose("Done!",verbose=args.verbose)
+    print_verbose(
+        "Total time elapsed: {}".format(time_b-time_a),
+        verbose=args.verbose)
