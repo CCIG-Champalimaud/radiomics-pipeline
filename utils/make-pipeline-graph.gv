@@ -1,0 +1,88 @@
+digraph G {
+    graph [rankdir=LR];
+    compound=true;
+
+    node [fontname="Helvetica"]
+    
+    subgraph cluster_main {
+        subgraph cluster_0 {
+            style=filled;
+            color=lightgrey;
+            fontname="Helvetica";
+            node [color=black];
+            mask [label="Mask with\nannotated lesions",shape=box];
+            dataset [shape=record,label="MRI sequences\n (T2W, ADC, HBV)"];
+            label = "Input data";
+        };
+
+        spacing [label="{Voxel spacing\n|{<f0>T2W|ADC|HBV}}",shape=record];
+
+        voxel_information [label="{Voxel information\n|{<f0>T2W|<f1>ADC|<f2>HBV}}",shape=record]
+
+        subgraph cluster_1 {
+            style=filled;
+            color=lightgrey;
+            fontname="Helvetica";
+            node [color=black];
+            settings_t2w [
+                label="{Original|Wavelet|LoG}|{Square|SquareRoot|Logarithm}|{Exponential|Gradient|LBP2D}",
+                shape=record]
+            label = "PyRadiomics settings for T2W";
+        };
+
+        subgraph cluster_2 {
+            style=filled;
+            color=lightgrey;
+            fontname="Helvetica";
+            node [color=black];
+            settings_adc [
+                label="{Original|Wavelet|LoG}|{Square|SquareRoot|Logarithm}|{Exponential|Gradient|LBP2D}",
+                shape=record]
+            label = "PyRadiomics settings for ADC";
+        };
+
+        subgraph cluster_3 {
+            style=filled;
+            color=lightgrey;
+            fontname="Helvetica";
+            node [color=black];
+            settings_hbv [
+                label="{Original|Wavelet|LoG}|{Square|SquareRoot|Logarithm}|{Exponential|Gradient|LBP2D}",
+                shape=record]
+            label = "PyRadiomics settings for HBV";
+        };
+        output [label="Output"];
+    }
+
+    subgraph cluster_4 {
+		style=filled;
+		color=lightgrey;
+        fontname="Helvetica";
+		node [color=black];
+        output_other [label="{Output 1|Output 2|...|Output n}",shape=record]
+		label = "Outputs from other input data";
+	};
+
+    output [label="Output"]
+
+    dataset -> spacing;
+
+    dataset -> voxel_information;
+
+    voxel_information:f0 -> settings_t2w [lhead=cluster_1];
+    voxel_information:f1 -> settings_adc [lhead=cluster_2];
+    voxel_information:f2 -> settings_hbv [lhead=cluster_3];
+
+    settings_t2w -> output [ltail=cluster_1];
+    settings_adc -> output [ltail=cluster_2];
+    settings_hbv -> output [ltail=cluster_3];
+
+    dataset -> output;
+
+    spacing:f0 -> output;
+
+    mask -> output;
+
+    output_other -> "Aggregated output" [ltail=cluster_4];
+    output -> "Aggregated output";
+}

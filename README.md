@@ -50,3 +50,7 @@ This pipeline works as follows:
 3. Getting the spacing for all datasets (this will be used to resample the input images to a common spacing - that corresponding to the first `key` in `pattern` in the `configfile` - before feature extraction). The output is stored in `dataset_information_path`
 4. Extract features from the input images using `utils/extract-radiomic-features.py`. The outputs are stored as JSON files in `radiomic_features_path`
 5. Aggregate all features into a single CSV file. The output is stored in `aggregated_features_path`
+
+A visualization of this pipeline using GraphViz is presented below.
+
+![](./pipeline.svg)
