@@ -1,0 +1,17 @@
+---
+# generic for dataset
+input_path: "../../data/PI-CAI/dataset_resized_corrected" # path containing the input images
+dataset_information_path: "dataset_information" # path for the output dataset information (spacing, voxel info)
+masks_path: "../../data/PI-CAI/labels/csPCa_lesion_delineations/human_expert/original" # path to masks
+mask_pattern: "*/*nii.gz" # pattern that will be used to glob masks
+radiomic_settings_path: "config-feature-extraction" # path to directory which contains/will contain settings files
+patterns: # patterns that will be used to glob the input images
+  t2w: "*/*/*_t2w.mha"
+  adc: "*/*/*_adc.mha"
+  hbv: "*/*/*_hbv.mha"
+# specific for output
+radiomic_features_path: "../../data/PI-CAI/radiomic_features_no_reg" # output path for radiomic features
+aggregated_features_path: "radiomic_features/features_no_reg.csv" # output path for aggregated radiomic features
+# meta parameters
+dataset_id: "PICAI" # id for the dataset (for the output files in dataset information)
+registration: "none" # registration type

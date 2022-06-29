@@ -223,7 +223,7 @@ if __name__ == "__main__":
         required=True,help="Output path.")
     parser.add_argument(
         '--registration',dest='registration',type=str,default="mask",
-        choices=["mask","largest","first"],
+        choices=["mask","largest","first","none"],
         help="Registers all images to an image with the shape of the mask \
             or to the largest image (registration is inferred from the first \
             non-fixed image and applied to other images).")
@@ -264,7 +264,6 @@ if __name__ == "__main__":
     all_sequences = {
         k:resample_image(all_sequences[k],args.target_spacing) 
         for k in all_sequences}
-    print(mask.GetSize(),np.unique(sitk.GetArrayFromImage(mask),return_counts=True))
     mask_ = resample_image(mask,args.target_spacing,is_label=True)
 
     if len(np.unique(sitk.GetArrayFromImage(mask_))) != len(unique_labels):
@@ -331,19 +330,32 @@ if __name__ == "__main__":
                 if np.all(sh == all_sh[0]):
                     no_reg.append(k)
 
+    elif args.registration == "none":
+        print("No registration, only resampling")
+        no_reg = [i for i in all_sequences]
+        c = 0
+        fixed = all_sequences[c]
+        fixed_sitk = itk_to_sitk(fixed)
+        for k in all_sequences:
+            all_sequences[k] = itk_to_sitk(all_sequences[k])
+            all_sequences[k] = resample_image_to_target(
+                all_sequences[k],fixed_sitk)
+        mask = resample_image_to_target(itk_to_sitk(mask),fixed_sitk,True)
+        reg_out = ["none"]
+
     reg = sorted([i for i in all_sequences if i not in no_reg])
 
     fixed = all_sequences[c]
     moving = {k:all_sequences[k] for k in reg}
     
-    # resample to spacing of target image (c), origin and size
-    fixed_sitk = itk_to_sitk(fixed)
-    for k in moving:
-        moving[k] = itk_to_sitk(moving[k])
-        moving[k] = resample_image_to_target(moving[k],fixed_sitk)
-        moving[k] = sitk_to_itk(moving[k])
-    mask = sitk_to_itk(
-        resample_image_to_target(itk_to_sitk(mask),fixed_sitk,True))
+    if args.registration != "none":
+        fixed_sitk = itk_to_sitk(fixed)
+        for k in moving:
+            moving[k] = itk_to_sitk(moving[k])
+            moving[k] = resample_image_to_target(moving[k],fixed_sitk)
+            moving[k] = sitk_to_itk(moving[k])
+        mask = sitk_to_itk(
+            resample_image_to_target(itk_to_sitk(mask),fixed_sitk,True))
 
     if len(moving) > 0:
         stop_reg = False
@@ -378,7 +390,7 @@ if __name__ == "__main__":
 
                 if reg_attempts > 2:
                     stop_reg = True
-                    reg_out = [""]
+                    reg_out = ["none"]
 
             sitk.WriteImage(itk_to_sitk(fixed),"fixed.nii.gz")
             sitk.WriteImage(itk_to_sitk(m),"moving.nii.gz")

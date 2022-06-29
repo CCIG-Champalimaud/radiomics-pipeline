@@ -1,0 +1,16 @@
+featureClass:
+    firstorder: 
+    glcm: 
+    gldm: 
+    glrlm: 
+    glszm: 
+    ngtdm: 
+    shape: 
+imageType: {}
+setting:
+    binWidth: null
+    force2D: true
+    normalize: true
+    normalizeScale: 1
+    voxelArrayShift: 0.0
+

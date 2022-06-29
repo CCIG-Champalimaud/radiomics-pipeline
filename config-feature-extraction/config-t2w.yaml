@@ -8,38 +8,38 @@ featureClass:
     shape: 
 imageType:
     Exponential:
-        binWidth: 0.05073808718715882
+        binWidth: 12.253931191203186
         voxelArrayShift: 0
     Gradient:
-        binWidth: 0.06718105792999268
+        binWidth: 11.670445556640624
         voxelArrayShift: 0
     LBP2D:
         binWidth: 0.09
         voxelArrayShift: 0
     LoG:
-        binWidth: 0.043896760940551754
+        binWidth: 7.75294189453125
         sigma:
         - 1
-        voxelArrayShift: 2
+        voxelArrayShift: 11637
     Logarithm:
-        binWidth: 0.08536897739205651
-        voxelArrayShift: 9
+        binWidth: 18.849220590567864
+        voxelArrayShift: 52724
     Original:
-        binWidth: 0.07328288345065637
-        voxelArrayShift: 2
+        binWidth: 12.917415527236388
+        voxelArrayShift: 564
     Square:
-        binWidth: 0.056723347890041166
+        binWidth: 12.260013153567126
         voxelArrayShift: 0
     SquareRoot:
-        binWidth: 0.056723347890041166
+        binWidth: 12.260013153567126
         voxelArrayShift: 0
     Wavelet:
-        binWidth: 0.05073808718715882
+        binWidth: 12.253931191203186
         voxelArrayShift: 0
 setting:
-    binWidth: 0.07328288345065637
+    binWidth: 12.917415527236388
     force2D: true
     normalize: true
     normalizeScale: 1
-    voxelArrayShift: 2
+    voxelArrayShift: 564
 
