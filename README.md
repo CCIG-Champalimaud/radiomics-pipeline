@@ -16,9 +16,17 @@ This script constitutes the powerhouse of the feature extraction. It assumes tha
 The `--assume_same` flag assumes that no registration is required if moving images/masks have the same shape as the fixed image (i.e. they are already aligned).
 
 ```
-usage: extract-radiomic-features.py [-h] --input_paths INPUT_PATHS [INPUT_PATHS ...] --configs CONFIGS [CONFIGS ...] --mask_path MASK_PATH --target_spacing TARGET_SPACING [TARGET_SPACING ...] --output_path OUTPUT_PATH [--registration {mask,largest,first}] [--assume_same]
+usage: extract-radiomic-features.py [-h] --input_paths INPUT_PATHS [INPUT_PATHS ...] --configs
+                                    CONFIGS [CONFIGS ...] --mask_path MASK_PATH
+                                    --target_spacing TARGET_SPACING [TARGET_SPACING ...]
+                                    --output_path OUTPUT_PATH
+                                    [--registration {mask,largest,first,none}] [--assume_same]
 
-Extracts features for a given set of sequences and a single mask. In case the sequences or the mask are of different sizes, it maps all of the sequences to a common space given as input. Optionally, this script also registers all sequences assuming that the first sequence is the reference. The mask may also be registered if its input size is different from that of the first input sequence.
+Extracts features for a given set of sequences and a single mask. In case the sequences or the
+mask are of different sizes, it maps all of the sequences to a common space given as input.
+Optionally, this script also registers all sequences assuming that the first sequence is the
+reference. The mask may also be registered if its input size is different from that of the
+first input sequence.
 
 options:
   -h, --help            show this help message and exit
@@ -33,10 +41,12 @@ options:
   --output_path OUTPUT_PATH
                         Output path.
   --registration {mask,largest,first,none}
-                        Registers all images to an image with the shape of the mask or to the largest image (registration is inferred from the first non-fixed image and
-                        applied to other images).
-  --assume_same         
-                        Assumes that if fixed and moving images/masks have the same shape they are already co-registered (or equivalent)  . Only for registration == 'first'.
+                        Registers all images to an image with the shape of the mask or to the
+                        largest image (registration is inferred from the first non-fixed image
+                        and applied to other images).
+  --assume_same         Assumes that if fixed and moving images/masks have the same shape they
+                        are already co-registered (or equivalent). Only for registration ==
+                        'first'.
 ```
 
 ## Extraction using Snakemake
