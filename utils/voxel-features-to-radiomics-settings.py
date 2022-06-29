@@ -2,16 +2,18 @@ import argparse
 import yaml
 from math import ceil
 
+empty_val = "NANANANA"
+
 settings_dict_template = {
     "imageType":{},
     "featureClass":{
-        "firstorder":"NANA",
-        "glcm":"NANA",
-        "glrlm":"NANA",
-        "glszm":"NANA",
-        "gldm":"NANA",
-        "ngtdm":"NANA",
-        "shape":"NANA"},
+        "firstorder":empty_val,
+        "glcm":empty_val,
+        "glrlm":empty_val,
+        "glszm":empty_val,
+        "gldm":empty_val,
+        "ngtdm":empty_val,
+        "shape":empty_val},
     "setting":{
         "binWidth":None,
         "normalize":True,
@@ -57,5 +59,5 @@ if __name__ == "__main__":
                     settings_dict["setting"]["voxelArrayShift"] = m
     
     x = yaml.dump(settings_dict,indent=4)
-    x = x.replace("NANA","")
+    x = x.replace(empty_val,"")
     print(x)

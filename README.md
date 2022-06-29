@@ -39,7 +39,7 @@ options:
 
 ## Extraction using Snakemake
 
-To extract features using the Snakemake pipeline (specified in `get-radiomic-features-pi-cai.smk`), one needs to edit `config.yaml` (the Snakemake `configfile`) such that it contains the correct values. The one presented here was used on data from PI-CAI. 
+To extract features using the Snakemake pipeline (specified in `get-radiomic-features-pi-cai.smk`), one needs to edit `config.yaml` (the Snakemake `configfile`) such that it contains the correct values. The one presented here was used on data from PI-CAI. I also present `config-no-reg.yaml`, a configuration file for feature extraction with no registration.
 
 This pipeline works as follows:
 
