@@ -77,11 +77,9 @@ digraph G {
     settings_adc -> output [ltail=cluster_2];
     settings_hbv -> output [ltail=cluster_3];
 
-    dataset -> output;
+    dataset -> output [ltail=cluster_0];
 
     spacing:f0 -> output;
-
-    mask -> output;
 
     output_other -> "Aggregated output" [ltail=cluster_4];
     output -> "Aggregated output";
