@@ -187,9 +187,7 @@ def yield_lesion_masks(mask):
                 np.mean([y.max(),y.min()]),
                 np.mean([z.max(),z.min()])]
             lesion_mask = sitk.GetImageFromArray(lesion_arr)
-            lesion_mask.SetOrigin(mask.GetOrigin())
-            lesion_mask.SetSpacing(mask.GetSpacing())
-            lesion_mask.SetDirection(mask.GetDirection())
+            lesion_mask.CopyInformation(mask)
             yield lesion_mask,center,cl
 
 desc = """
@@ -296,14 +294,16 @@ if __name__ == "__main__":
         mask.SetOrigin(all_sequences[c].GetOrigin())
 
     # register images
-    resolutions = 1
-    parameter_object = itk.ParameterObject.New()
-    parameter_map_translation = parameter_object.GetDefaultParameterMap('translation',resolutions)
-    parameter_map_translation["AutomaticTransformInitialization"] = ["true"]
-    parameter_map_translation["AutomaticTransformInitializationMethod"] = ["GeometricalCenter"]
-    parameter_object.AddParameterMap(parameter_map_translation)
-    #parameter_map_rigid = parameter_object.GetDefaultParameterMap('rigid',resolutions)
-    #parameter_object.AddParameterMap(parameter_map_rigid)
+    if args.registration != 'none':
+        resolutions = 4
+        parameter_object = itk.ParameterObject.New()
+        parameter_map_translation = parameter_object.GetDefaultParameterMap(
+            'translation',resolutions)
+        parameter_map_translation["AutomaticTransformInitialization"] = ["true"]
+        parameter_map_translation["AutomaticTransformInitializationMethod"] = ["GeometricalCenter"]
+        parameter_object.AddParameterMap(parameter_map_translation)
+        parameter_map_rigid = parameter_object.GetDefaultParameterMap('rigid',resolutions)
+        parameter_object.AddParameterMap(parameter_map_rigid)
 
     all_sequences = {k:sitk_to_itk(all_sequences[k]) for k in all_sequences}
     mask = sitk_to_itk(mask)
@@ -405,10 +405,6 @@ if __name__ == "__main__":
                 if reg_attempts > 2:
                     stop_reg = True
                     reg_out = ["none"]
-
-            sitk.WriteImage(itk_to_sitk(fixed),"fixed.nii.gz")
-            sitk.WriteImage(itk_to_sitk(m),"moving.nii.gz")
-            sitk.WriteImage(itk_to_sitk(result_image),"moved.nii.gz")
         
         for k in reg[1:]:
             mi = moving[k]

@@ -5,7 +5,13 @@ from math import ceil
 empty_val = "NANANANA"
 
 settings_dict_template = {
-    "imageType":{},
+    "imageType":{
+        # LBP2D are positive integers, so it is the one filter for which
+        # we can educatedly assume a reasonable binWidth
+        "LBP2D":{
+            "binWidth": 1.0,
+            "voxelArrayShift": 0}
+    },
     "featureClass":{
         "firstorder":empty_val,
         "glcm":empty_val,
