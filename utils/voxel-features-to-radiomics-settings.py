@@ -25,7 +25,8 @@ settings_dict_template = {
         "normalize":True,
         "normalizeScale":1,
         "force2D":True,
-        "voxelArrayShift":0.0}
+        "voxelArrayShift":0.0,
+        "minimumROIDimensions":1}
 }
 
 if __name__ == "__main__":

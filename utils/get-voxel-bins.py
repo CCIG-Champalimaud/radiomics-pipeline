@@ -113,7 +113,7 @@ if __name__ == "__main__":
         default=1)
     parser.add_argument(
         '--conditional_multiplication',dest='conditional_multiplication',
-        type=int,nargs=2,default=None)
+        type=float,nargs=2,default=None)
 
     args = parser.parse_args()
 

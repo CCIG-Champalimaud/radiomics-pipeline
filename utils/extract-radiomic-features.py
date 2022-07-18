@@ -214,7 +214,7 @@ if __name__ == "__main__":
         '--mask_path',dest='mask_path',type=str,required=True,
         help="Path to mask in nibabel compatible format.")
     parser.add_argument(
-        '--target_spacing',dest='target_spacing',type=float,required=True,
+        '--target_spacing',dest='target_spacing',type=float,default=None,
         nargs="+",help="Target spacing for the inputs/mask.")
     parser.add_argument(
         '--output_path',dest='output_path',type=str,
@@ -233,7 +233,16 @@ if __name__ == "__main__":
     parser.add_argument(
         '--verbose',dest="verbose",action="store_true",default=False,
         help="Activates verbosity.")
-    
+    parser.add_argument(
+        '--cond_mult_idx',dest='cond_mult_idx',type=int,default=None,
+        help="Image path index to apply conditional multiplication.")
+    parser.add_argument(
+        '--conditional_multiplication',dest='conditional_multiplication',
+        type=float,nargs=2,
+        help="Two values, [0] sets a threshold and if any value in the image \
+            is above that threshold, then the whole image is multiplied by \
+            [1].")
+
     args = parser.parse_args()
 
     time_a = time.time()
@@ -295,15 +304,13 @@ if __name__ == "__main__":
 
     # register images
     if args.registration != 'none':
-        resolutions = 4
+        # aligning using translation and rigid-body registration
         parameter_object = itk.ParameterObject.New()
-        parameter_map_translation = parameter_object.GetDefaultParameterMap(
-            'translation',resolutions)
-        parameter_map_translation["AutomaticTransformInitialization"] = ["true"]
-        parameter_map_translation["AutomaticTransformInitializationMethod"] = ["GeometricalCenter"]
-        parameter_object.AddParameterMap(parameter_map_translation)
-        parameter_map_rigid = parameter_object.GetDefaultParameterMap('rigid',resolutions)
-        parameter_object.AddParameterMap(parameter_map_rigid)
+        parameter_object.AddParameterFile(
+            "registration-parameters/translation.txt")
+        
+        parameter_object.AddParameterFile(
+            "registration-parameters/rigid-body.txt")
 
     all_sequences = {k:sitk_to_itk(all_sequences[k]) for k in all_sequences}
     mask = sitk_to_itk(mask)
@@ -445,9 +452,16 @@ if __name__ == "__main__":
     for k in all_sequences:
         config = args.configs[k]
         sequence = all_sequences[k]
+        if k == args.cond_mult_idx:
+            am = args.conditional_multiplication
+            M = sitk.GetArrayFromImage(sequence).max()
+            if M > am[0]:
+                sequence = sitk.Multiply(
+                    sitk.Cast(sequence,sitk.sitkFloat32),am[1])
         fe = featureextractor.RadiomicsFeatureExtractor(config)
         path = input_dict[k]
         for i,(lesion_mask,center,cl) in enumerate(yield_lesion_masks(mask)):
+            reg_out_str = '_'.join(reg_out) if len(reg_out)>0 else "failed"
             print_verbose(
                 "Extracting features for lesion {} in {}".format(i,path),
                 verbose=args.verbose)
@@ -457,18 +471,28 @@ if __name__ == "__main__":
             print_verbose(
                 "\tCenter: {}\n\tClass: {}".format(center,cl),
                 verbose=args.verbose)
-            reg_out_str = '_'.join(reg_out) if len(reg_out)>0 else "failed"
             time_c = time.time()
-            features = fe.execute(sequence,lesion_mask)
-            features = dict(features)
-            features["path"] = path
-            features["lesion_center"] = center
-            features["lesion_id"] = i
-            features["sequence_id"] = k
-            features["class"] = cl
-            features["config_file"] = config
-            features["registration"] = reg_out_str
-            features["mask_resampling"] = mask_resampling
+            if np.count_nonzero(sitk.GetArrayFromImage(lesion_mask)) < 2:
+                print_verbose(
+                    "\tOnly one voxel present in lesion, skipping",
+                    verbose=args.verbose)
+                features = {}
+                features["lesion_id"] = np.nan
+                features["lesion_center"] = center
+                features["path"] = path
+                features["sequence_id"] = k
+                features["class"] = cl
+            else:
+                features = fe.execute(sequence,lesion_mask)
+                features = dict(features)
+                features["lesion_id"] = i
+                features["path"] = path
+                features["lesion_center"] = center
+                features["sequence_id"] = k
+                features["class"] = cl
+                features["config_file"] = config
+                features["registration"] = reg_out_str
+                features["mask_resampling"] = mask_resampling
             for key in features:
                 value = features[key]
                 try: value = float(value)
