@@ -366,8 +366,8 @@ if __name__ == "__main__":
 
     fixed = all_sequences[c]
     moving = {k:all_sequences[k] for k in reg}
-    
-    if args.registration != "none":
+        
+    if len(moving) > 0:
         fixed_sitk = itk_to_sitk(fixed)
         for k in moving:
             moving[k] = itk_to_sitk(moving[k])
@@ -376,7 +376,6 @@ if __name__ == "__main__":
         mask = sitk_to_itk(
             resample_image_to_target(itk_to_sitk(mask),fixed_sitk,True))
 
-    if len(moving) > 0:
         stop_reg = False
         reg_attempts = 0
         reg_out = ["translation","rigid"]
@@ -447,6 +446,13 @@ if __name__ == "__main__":
         for k in sorted(no_reg):
             out[k] = itk_to_sitk(all_sequences[k])
         all_sequences = out
+
+    elif args.registration != "none":
+        mask = itk_to_sitk(mask)
+        for k in all_sequences:
+            all_sequences[k] = itk_to_sitk(all_sequences[k])
+        # in practical terms no registration occurred
+        reg_out = ["none"]
 
     output_dict = {}
     for k in all_sequences:
