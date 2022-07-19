@@ -90,6 +90,7 @@ def register_label(itk_image,fixed,parameters,thr=0.2):
     sitk_image = itk_to_sitk(itk_image)
     fixed = itk_to_sitk(fixed)
     output = sitk.Image(fixed.GetSize(),sitk.sitkUInt8)
+    output.CopyInformation(fixed)
     binarizer = sitk.BinaryThresholdImageFilter()
     binarizer.SetLowerThreshold(thr)
     for lesion_mask,_,cl in yield_lesion_masks(sitk_image):
@@ -99,9 +100,6 @@ def register_label(itk_image,fixed,parameters,thr=0.2):
         registered_image = itk.transformix_filter(lesion_mask,parameters)
         registered_image = itk_to_sitk(registered_image)
         binarized_image = binarizer.Execute(registered_image)
-        output.SetOrigin(registered_image.GetOrigin())
-        output.SetDirection(registered_image.GetDirection())
-        output.SetSpacing(registered_image.GetSpacing())
         output = sitk.Add(output,binarized_image)
     output = sitk.Cast(output,sitk.sitkFloat32)
     output = sitk_to_itk(output)
@@ -380,37 +378,58 @@ if __name__ == "__main__":
         reg_attempts = 0
         reg_out = ["translation","rigid"]
         while stop_reg == False:
-            try:
-                reg_attempts += 1
-                m = moving[reg[0]]
-                moving_params = {
-                    "spacing":m.GetSpacing(),
-                    "origin":m.GetOrigin(),
-                    "direction":m.GetDirection()}
-                result_image, result_transform_parameters = itk.elastix_registration_method(
-                    fixed,m,parameter_object=parameter_object,
-                    log_to_console=False)
-                result_images = {reg[0]:itk_to_sitk(result_image)}
-                stop_reg = True
-            except:
-                if reg_attempts > 1:
-                    print_verbose(
-                        "Translation+rigid body registration failed, attempting only translation registration...",
-                        verbose=args.verbose)
-                    parameter_object = itk.ParameterObject.New()
-                    parameter_map_translation = parameter_object.GetDefaultParameterMap(
-                        'translation',resolutions)
-                    parameter_map_translation[
-                        "AutomaticTransformInitialization"] = ["true"]
-                    parameter_map_translation[
-                        "AutomaticTransformInitializationMethod"] = ["GeometricalCenter"]
-                    parameter_object.AddParameterMap(
-                        parameter_map_translation)
-                    reg_out = ["translation"]
+            m = moving[reg[0]]
+            moving_params = {
+                "spacing":m.GetSpacing(),
+                "origin":m.GetOrigin(),
+                "direction":m.GetDirection()}
+            result_image, result_transform_parameters = itk.elastix_registration_method(
+                fixed,m,parameter_object=parameter_object,
+                log_to_console=False)
+            result_images = {reg[0]:itk_to_sitk(result_image)}
+            if args.registration != "mask" and c not in same_size_as_mask:
+                # change to nearest neighbour for mask
+                result_transform_parameters.SetParameter(
+                    "Interpolator",
+                    "NearestNeighborInterpolator")
+                result_transform_parameters.SetParameter(
+                    "ResampleInterpolator",
+                    "FinalNearestNeighborInterpolator")
+                result_transform_parameters.SetParameter(
+                    "FinalBSplineInterpolationOrder","0")
 
-                if reg_attempts > 2:
-                    stop_reg = True
-                    reg_out = ["none"]
+                mask_ = itk.transformix_filter(
+                    mask,result_transform_parameters)
+                N = len(np.unique(itk.GetArrayFromImage(mask_)))
+                if N != len(unique_labels):
+                    result_transform_parameters.SetParameter(
+                        "Interpolator","BSplineInterpolator")
+                    result_transform_parameters.SetParameter(
+                        "ResampleInterpolator","FinalBSplineInterpolator")
+                    result_transform_parameters.SetParameter(
+                        "FinalBSplineInterpolationOrder","1")
+                    mask_ = register_label(
+                        mask,fixed,result_transform_parameters,0.2)
+                mask = mask_
+            N = len(np.unique(itk.GetArrayFromImage(mask)))
+            if N == len(unique_labels):
+                stop_reg = True
+            else:
+                print_verbose(
+                    "Translation+rigid body registration failed, attempting only translation registration...",
+                    verbose=args.verbose)
+                parameter_object = itk.ParameterObject.New()
+                parameter_object.AddParameterFile(
+                    "registration-parameters/translation.txt")
+                reg_out = ["translation"]
+
+            if reg_attempts > 1:
+                reg_out = []
+                stop_reg = True
+            
+            reg_attempts += 1
+        
+        mask = itk_to_sitk(mask)
         
         for k in reg[1:]:
             mi = moving[k]
@@ -418,29 +437,6 @@ if __name__ == "__main__":
                 mi,result_transform_parameters)
             transf_im = itk_to_sitk(transf_im)
             result_images[k] = transf_im
-
-        # change to nearest neighbour for mask
-        result_transform_parameters.SetParameter(
-            "Interpolator","NearestNeighborInterpolator")
-        result_transform_parameters.SetParameter(
-            "ResampleInterpolator","FinalNearestNeighborInterpolator")
-        result_transform_parameters.SetParameter(
-            "FinalBSplineInterpolationOrder","0")
-        
-        if args.registration != "mask" and c not in same_size_as_mask:
-            mask_ = itk.transformix_filter(
-                mask,result_transform_parameters)
-            if len(np.unique(itk.GetArrayFromImage(mask_))) == len(unique_labels):
-                result_transform_parameters.SetParameter(
-                    "Interpolator","BSplineInterpolator")
-                result_transform_parameters.SetParameter(
-                    "ResampleInterpolator","FinalBSplineInterpolator")
-                result_transform_parameters.SetParameter(
-                    "FinalBSplineInterpolationOrder","1")
-                mask_ = register_label(
-                    mask,fixed,result_transform_parameters,0.2)
-            mask = mask_
-        mask = itk_to_sitk(mask)
         
         out = result_images
         for k in sorted(no_reg):
@@ -453,6 +449,26 @@ if __name__ == "__main__":
             all_sequences[k] = itk_to_sitk(all_sequences[k])
         # in practical terms no registration occurred
         reg_out = ["none"]
+
+    reg_out_str = '_'.join(reg_out) if len(reg_out)>0 else "failed"
+    if reg_out_str == "failed":
+        print_verbose(
+            "\tRegistration failed, skipping feature extraction",
+            verbose=args.verbose)
+        features = {}
+        output_dict = {
+            "path":args.input_paths,
+            "lesion_center":[np.nan for _ in args.input_paths],
+            "lesion_id":[np.nan for _ in args.input_paths],
+            "sequence_id":[i for i in range(len(args.input_paths))],
+            "class":[np.nan for _ in args.input_paths],
+            "config_file":[np.nan for _ in args.configs],
+            "mask_resampling":[np.nan for _ in args.configs],
+            "registration":["failed" for _ in args.configs]}
+        output = json.dumps(output_dict,indent=2)
+        with open(args.output_path,'w') as o:
+            o.write(output)
+        exit()
 
     output_dict = {}
     for k in all_sequences:
@@ -467,7 +483,6 @@ if __name__ == "__main__":
         fe = featureextractor.RadiomicsFeatureExtractor(config)
         path = input_dict[k]
         for i,(lesion_mask,center,cl) in enumerate(yield_lesion_masks(mask)):
-            reg_out_str = '_'.join(reg_out) if len(reg_out)>0 else "failed"
             print_verbose(
                 "Extracting features for lesion {} in {}".format(i,path),
                 verbose=args.verbose)
