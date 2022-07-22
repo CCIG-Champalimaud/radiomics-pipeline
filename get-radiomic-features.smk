@@ -19,12 +19,15 @@ id_pattern = config["id_pattern"]
 n_bins = 100
 no_scale_keys = ["adc","ADC"]
 conditional_multiplication = {"adc":[1000,0.001]}
+additional_arguments = ""
 if 'n_bins' in config:
     n_bins = config['n_bins']
 if 'no_scale_keys' in config:
     no_scale_keys = config['no_scale_keys']
 if 'cond_mult' in config:
     conditional_multiplication = config['cond_mult']
+if 'additional_arguments' in config:
+    additional_arguments = config['additional_arguments']
 
 def shift(l,idxs):
     l = [l[i] for i in idxs]

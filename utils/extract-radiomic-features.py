@@ -224,6 +224,10 @@ if __name__ == "__main__":
             or to the largest image (registration is inferred from the first \
             non-fixed image and applied to other images).")
     parser.add_argument(
+        '--no_rigid',dest='no_rigid',type=str,default=False,
+        action="store_true",
+        help="Skips rigid body registration (only translation).")
+    parser.add_argument(
         '--assume_same',dest="assume_same",action="store_true",default=False,
         help="Assumes that if fixed and moving images/masks have the same shape \
             they are already co-registered (or equivalent). Only for \
@@ -307,8 +311,9 @@ if __name__ == "__main__":
         parameter_object.AddParameterFile(
             "registration-parameters/translation.txt")
         
-        parameter_object.AddParameterFile(
-            "registration-parameters/rigid-body.txt")
+        if args.no_rigid == False:
+            parameter_object.AddParameterFile(
+                "registration-parameters/rigid-body.txt")
 
     all_sequences = {k:sitk_to_itk(all_sequences[k]) for k in all_sequences}
     mask = sitk_to_itk(mask)
