@@ -20,7 +20,7 @@ aggregated_features_path: "radiomic_features/aggregated-features" # output path 
 dataset_id: "PROSTATEx" # id for the dataset (for the output files in dataset information)
 registration: "none" # registration type
 registration_param_files: 
-  # param files for ilastix registration (if a registration is specified!)
+  # param files for ITKElastix registration (if a registration is specified!)
   - "registration-parameters/rigid-body.txt"
   - "registration-parameters/translation.txt"
 id_pattern: "Prostatex[0-9]+" # pattern to extract ID from path
