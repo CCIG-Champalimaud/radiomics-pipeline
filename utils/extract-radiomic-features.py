@@ -224,9 +224,8 @@ if __name__ == "__main__":
             or to the largest image (registration is inferred from the first \
             non-fixed image and applied to other images).")
     parser.add_argument(
-        '--no_rigid',dest='no_rigid',type=str,default=False,
-        action="store_true",
-        help="Skips rigid body registration (only translation).")
+        '--registration_parameter_files',dest='registration_parameter_files',
+        nargs="+",help="Path to ilastix registration parameters.")
     parser.add_argument(
         '--assume_same',dest="assume_same",action="store_true",default=False,
         help="Assumes that if fixed and moving images/masks have the same shape \
@@ -305,16 +304,13 @@ if __name__ == "__main__":
         mask.SetOrigin(all_sequences[c].GetOrigin())
 
     # register images
-    if args.registration != 'none':
+    rpf = args.registration_parameter_files
+    if args.registration != 'none' and rpf is not None:
         # aligning using translation and rigid-body registration
         parameter_object = itk.ParameterObject.New()
-        parameter_object.AddParameterFile(
-            "registration-parameters/translation.txt")
+        for file in rpf:
+            parameter_object.AddParameterFile(file)
         
-        if args.no_rigid == False:
-            parameter_object.AddParameterFile(
-                "registration-parameters/rigid-body.txt")
-
     all_sequences = {k:sitk_to_itk(all_sequences[k]) for k in all_sequences}
     mask = sitk_to_itk(mask)
 

@@ -7,6 +7,7 @@ masks_path = config["masks_path"]
 output_paths = {
     "radiomic_features": config["radiomic_features_path"],
     "dataset_information": config["dataset_information_path"],
+    "aggregated_features": config["aggregated_features_path"],
     "radiomic_settings": config["radiomic_settings_path"]}
 dataset_id = config["dataset_id"]
 patterns = config["patterns"]
@@ -15,15 +16,23 @@ registration = config["registration"]
 id_pattern = config["id_pattern"]
 
 # optional arguments
-n_bins = 100
-no_scale_keys = ["adc","ADC"]
-conditional_multiplication = {"adc":[1000,0.001]}
-if 'n_bins' in config:
-    n_bins = config['n_bins']
-if 'no_scale_keys' in config:
-    no_scale_keys = config['no_scale_keys']
-if 'cond_mult' in config:
-    conditional_multiplication = config['cond_mult']
+opt_args = {
+    "n_bins": 100,
+    "no_scale_keys": ["adc","ADC"],
+    "conditional_multiplication": {"adc":[1000,0.001]},
+    "additional_arguments":"",
+    "transforms":["all"],
+    "features":["all"]
+}
+for k in opt_args:
+    if k in config:
+        opt_args[k] = config[k]
+n_bins = opt_args["n_bins"]
+no_scale_keys = opt_args["no_scale_keys"]
+conditional_multiplication = opt_args["conditional_multiplication"]
+additional_arguments = opt_args["additional_arguments"]
+transforms = opt_args["transforms"]
+features = opt_args["features"]
 
 def shift(l,idxs):
     l = [l[i] for i in idxs]
@@ -59,18 +68,19 @@ def cond_mult_abs(wc):
 def cond_mult_idx(wc):
     if len(conditional_multiplication) > 0:
         K = list(conditional_multiplication.keys())
-        P = list(patterns.keys())
-        if K[0] in P:
-            idx = P.index(K[0])
-            o = "--cond_mult_idx " + str(idx)
-        else:
-            o = ""
+        idx = list(patterns.keys()).index(K[0])
+        o = "--cond_mult_idx " + str(idx)
     else: 
         o = ""
     return o
 
 for k in output_paths:
-    os.makedirs(output_paths[k],exist_ok=True)
+    if k != "aggregated_features":
+        os.makedirs(output_paths[k],exist_ok=True)
+    else:
+        d = os.sep.join(output_paths[k].split(os.sep)[:-1])
+        if len(d) > 0:
+            os.makedirs(d,exist_ok=True)
 
 mask_dict = {}
 for path in glob(os.path.join(masks_path,pattern_mask)):
@@ -87,7 +97,7 @@ for k in patterns:
     output_spacing.append(
         "{}/spacing.{}.{}".format(output_paths["dataset_information"],k,dataset_id))
     output_voxel_features.append(
-        "{}/voxel_features.{}.{}.{}.csv".format(
+        "{}/voxel_features.{}.{}.{}.json".format(
             output_paths["dataset_information"],k,dataset_id,n_bins))
     output_radiomic_settings.append(
         os.path.join(output_paths["radiomic_settings"],"config-{}-{}-{}.yaml").format(
@@ -106,10 +116,15 @@ for k in patterns:
                 output_radiomics.append(out_path)
                 correspondence_dict[sub_o] = [path]
 
+output_aggregated = os.path.join(
+    output_paths["aggregated_features"],
+    dataset_id + "_" + ".".join(patterns.keys()) + ".csv")
+
 rule all:
     input:
         output_spacing,
         output_radiomics,
+        output_aggregated,
         output_voxel_features,
         output_radiomic_settings
 
@@ -119,29 +134,32 @@ rule get_voxel_features:
     output:
         os.path.join(
             output_paths["dataset_information"],
-            "voxel_features.{mod}." + dataset_id + "." + str(n_bins) + ".csv")
+            "voxel_features.{mod}." + dataset_id + "." + str(n_bins) + ".json")
     params:
         scale=scale,
         cond_mult=cond_mult,
-        pattern=lambda wc: patterns[wc.mod]
+        pattern=lambda wc: patterns[wc.mod],
+        n_workers=workflow.cores
+    threads:
+        workflow.cores
     shell:
         """
-        python3 utils/get-voxel-bins.py \
+        python3 utils/get-all-info.py \
             --input_dir {input} \
             --pattern {params.pattern} \
             --rule minmax \
             --nbins {n_bins} \
-            --n_workers 8 \
+            --n_workers {params.n_workers} \
             --output_paths {output} \
             {params.scale} {params.cond_mult} \
-            --exclude_transforms LBP2D
+            --transforms {transforms}
         """
 
 rule get_radiomic_settings:
     input:
         os.path.join(
             output_paths["dataset_information"],
-            "voxel_features.{mod}."+dataset_id+"." + str(n_bins) + ".csv")
+            "voxel_features.{mod}."+dataset_id+"." + str(n_bins) + ".json")
     output:
         os.path.join(output_paths["radiomic_settings"],"config-{mod}-{n_bins}-{dataset_id}.yaml")
     params:
@@ -154,18 +172,18 @@ rule get_radiomic_settings:
 
 rule get_spacing:
     input:
-        input_path
+        os.path.join(
+            output_paths["dataset_information"],
+            "voxel_features.{mod}." + dataset_id + "." + str(n_bins) + ".json")
     output:
         os.path.join(output_paths["dataset_information"],"spacing.{mod}."+dataset_id)
     params:
-        pattern=lambda wc: patterns[wc.mod],
-        q=0.9,
+        q=0.5,
         parameter="spacing"
     shell:
         """
-        python3 utils/get-info.py \
-    	    --input_dir {input_path} \
-    	    --pattern {params.pattern} \
+        python3 utils/summarise-info.py \
+    	    --input_path {input} \
     	    --parameter {params.parameter} \
     	    --quantile {params.q} > {output}
         """
@@ -193,4 +211,15 @@ rule get_radiomic_features:
             --registration {registration} \
             {params.cond_mult} {params.cond_mult_idx} \
             --output_path {output}
+        """
+
+rule aggregate_features:
+    input:
+        output_radiomics
+    output:
+        output_aggregated
+    shell:
+        """
+        python3 utils/aggregate-features.py \
+            --input_paths {input} --id_pattern {id_pattern} > {output}
         """

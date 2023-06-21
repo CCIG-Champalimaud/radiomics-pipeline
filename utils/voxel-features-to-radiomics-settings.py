@@ -1,8 +1,15 @@
 import argparse
 import yaml
+import json
+import numpy as np
 from math import ceil
 
-empty_val = "NANANANA"
+empty_val = "EMPTYVAL"
+
+all_transforms = [
+    "Original","Wavelet","LoG","Square","SquareRoot",
+    "Logarithm","Exponential","Gradient","LBP2D"
+]
 
 settings_dict_template = {
     "imageType":{
@@ -29,41 +36,73 @@ settings_dict_template = {
         "minimumROIDimensions":1}
 }
 
+all_feature_str = list(settings_dict_template["featureClass"].keys())
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_path",dest="input_path",type=str)
-    parser.add_argument("--no_scale",dest="no_scale",action="store_true")
+    parser.add_argument(
+        "--input_path",dest="input_path",type=str)
+    parser.add_argument(
+        "--features",dest="features",default=["all"],nargs="+",type=str,
+        choices=all_feature_str)
+    parser.add_argument(
+        "--transforms",dest="transforms",default=["all"],nargs="+",type=str,
+        choices=all_transforms)
+    parser.add_argument(
+        "--no_scale",dest="no_scale",action="store_true")
     args = parser.parse_args()
 
+    if "all" in args.features[0]:
+        features = all_feature_str
+    else:
+        features = args.features
+
+    if "all" in args.transforms[0]:
+        transforms = all_transforms
+    else:
+        transforms = args.transforms
+
     settings_dict = settings_dict_template.copy()
+    settings_dict["featureClass"] = {
+        k:settings_dict["featureClass"][k] 
+        for k in settings_dict["featureClass"]
+        if k in features
+    }
+
     if args.no_scale == True:
         settings_dict["setting"]["normalize"] = False
     with open(args.input_path,'r') as o:
-        for line in o:
-            line = line.strip().split(",")
-            if line[0] == "bw" and line[2] == "q0.5":
-                bw = float(line[-1])
-                if line[1] in settings_dict["imageType"]:
-                    settings_dict["imageType"][line[1]]["binWidth"] = bw
-                else:
-                    settings_dict["imageType"][line[1]] = {"binWidth":bw}
-                if line[1] == "Original":
-                    settings_dict["setting"]["binWidth"] = bw
-                if line[1] == "LoG":
-                    settings_dict["imageType"]["LoG"]["sigma"] = [1]
-            elif line[0] == "q01":
-                m = float(line[-1])
-                if m < 0:
-                    m = ceil(-m)
-                else:
-                    m = 0
-                if line[1] in settings_dict["imageType"]:
-                    settings_dict["imageType"][line[1]]["voxelArrayShift"] = m
-                else:
-                    settings_dict["imageType"][line[1]] = {"voxelArrayShift":m}
-                if line[1] == "Original":
-                    settings_dict["setting"]["voxelArrayShift"] = m
+        data = json.loads(o.read())
+        all_bw = {}
+        all_q01 = {}
+        for key in data:
+            for transform_key in data[key]["bin_width_info"]:
+                if transform_key not in all_bw:
+                    all_bw[transform_key] = []
+                    all_q01[transform_key] = []
+                all_bw[transform_key].append(
+                    data[key]["bin_width_info"][transform_key]["bandwidth"])
+                all_q01[transform_key].append(
+                    data[key]["bin_width_info"][transform_key]["bandwidth"])
+        for transform_key in all_bw:
+            bw = float(np.median(all_bw[transform_key]))
+            if transform_key == "Original":
+                settings_dict["setting"]["binWidth"] = bw
+            if transform_key not in settings_dict:
+                settings_dict["imageType"][transform_key] = {"binWidth":bw}
+            if transform_key == "LoG":
+                settings_dict["imageType"]["LoG"]["sigma"] = [1]
+
+        for transform_key in all_q01:
+            q01 = float(np.min(all_q01[transform_key]))
+            if q01 < 0:
+                q01 = ceil(-q01)
+            else:
+                q01 = 0
+            if transform_key == "Original":
+                settings_dict["setting"]["voxelArrayShift"] = q01
+            settings_dict["imageType"][transform_key]["voxelArrayShift"] = q01
     
     x = yaml.dump(settings_dict,indent=4)
     x = x.replace(empty_val,"")
