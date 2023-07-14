@@ -18,8 +18,8 @@ id_pattern = config["id_pattern"]
 # optional arguments
 opt_args = {
     "n_bins": 100,
-    "no_scale_keys": ["adc","ADC"],
-    "conditional_multiplication": {"adc":[1000,0.001]},
+    "no_scale_keys": [],
+    "conditional_multiplication": {},
     "additional_arguments":"",
     "transforms":["all"],
     "features":["all"]
@@ -89,52 +89,58 @@ for path in glob(os.path.join(masks_path,pattern_mask)):
 
 output_spacing = []
 output_voxel_features = []
-output_radiomic_settings = []
-correspondence_dict = {}
-correspondence_dict_masks = {}
-output_radiomics = []
+output_radiomic_settings = {str(bin_number):[] for bin_number in n_bins}
+correspondence_dict = {str(bin_number):{} for bin_number in n_bins}
+correspondence_dict_masks = {str(bin_number):{} for bin_number in n_bins}
+output_radiomics = {str(bin_number):[] for bin_number in n_bins}
 for k in patterns:
-    output_spacing.append(
-        "{}/spacing.{}.{}".format(output_paths["dataset_information"],k,dataset_id))
-    output_voxel_features.append(
-        "{}/voxel_features.{}.{}.{}.json".format(
-            output_paths["dataset_information"],k,dataset_id,n_bins))
-    output_radiomic_settings.append(
-        os.path.join(output_paths["radiomic_settings"],"config-{}-{}-{}.yaml").format(
-            k,n_bins,dataset_id
-        ))
-    for path in glob(os.path.join(input_path,patterns[k])):
-        o = path.replace(input_path,"")
-        sub_o = re.search(id_pattern,o).group()
-        out_path = os.path.join(output_paths["radiomic_features"],sub_o+".json")
-        sub_folder = o[0]
-        if sub_o in mask_dict:
-            correspondence_dict_masks[sub_o] = mask_dict[sub_o]
-            if sub_o in correspondence_dict:
-                correspondence_dict[sub_o].append(path)
-            else:
-                output_radiomics.append(out_path)
-                correspondence_dict[sub_o] = [path]
+    for bin_number in n_bins:
+        bin_number = str(bin_number)
+        output_spacing.append(
+            "{}/spacing.{}.{}".format(output_paths["dataset_information"],k,dataset_id))
+        output_voxel_features.append(
+            "{}/voxel_features.{}.{}_{}.json".format(
+                output_paths["dataset_information"],k,dataset_id,bin_number))
+        output_radiomic_settings[bin_number].append(
+            os.path.join(
+                output_paths["radiomic_settings"],
+                "config-{}-{}-{}.yaml").format(
+                    k,bin_number,dataset_id))
+        for path in glob(os.path.join(input_path,patterns[k])):
+            o = path.replace(input_path,"")
+            sub_o = re.search(id_pattern,o).group()
+            out_path = os.path.join(output_paths["radiomic_features"],f"{sub_o}.{bin_number}.json")
+            sub_folder = o[0]
+            if sub_o in mask_dict:
+                correspondence_dict_masks[bin_number][sub_o] = mask_dict[sub_o]
+                if sub_o in correspondence_dict[bin_number]:
+                    correspondence_dict[bin_number][sub_o].append(path)
+                else:
+                    output_radiomics[bin_number].append(out_path)
+                    correspondence_dict[bin_number][sub_o] = [path]
 
-output_aggregated = os.path.join(
-    output_paths["aggregated_features"],
-    dataset_id + "_" + ".".join(patterns.keys()) + ".csv")
+output_aggregated = []
+for bin_number in n_bins:
+    os.path.join(
+        output_paths["aggregated_features"],
+        f"{dataset_id}_{'.'.join(patterns.keys())}_{bin_number}.csv")
 
 rule all:
     input:
         output_spacing,
-        output_radiomics,
+        [output_radiomics[k] for k in output_radiomics],
         output_aggregated,
         output_voxel_features,
-        output_radiomic_settings
+        [output_radiomic_settings[k] for k in output_radiomic_settings]
 
 rule get_voxel_features:
     input:
         input_path
     output:
-        os.path.join(
+        [os.path.join(
             output_paths["dataset_information"],
-            "voxel_features.{mod}." + dataset_id + "." + str(n_bins) + ".json")
+            "voxel_features.{mod}."+dataset_id+ "_" + str(n) + ".json")
+        for n in n_bins]
     params:
         scale=scale,
         cond_mult=cond_mult,
@@ -159,7 +165,7 @@ rule get_radiomic_settings:
     input:
         os.path.join(
             output_paths["dataset_information"],
-            "voxel_features.{mod}."+dataset_id+"." + str(n_bins) + ".json")
+            "voxel_features.{mod}." + dataset_id + "_{n_bins}.json")
     output:
         os.path.join(output_paths["radiomic_settings"],"config-{mod}-{n_bins}-{dataset_id}.yaml")
     params:
@@ -172,9 +178,10 @@ rule get_radiomic_settings:
 
 rule get_spacing:
     input:
-        os.path.join(
+        [os.path.join(
             output_paths["dataset_information"],
-            "voxel_features.{mod}." + dataset_id + "." + str(n_bins) + ".json")
+            "voxel_features.{mod}."+dataset_id+ "_" + str(n) + ".json")
+        for n in n_bins][0]
     output:
         os.path.join(output_paths["dataset_information"],"spacing.{mod}."+dataset_id)
     params:
@@ -190,13 +197,16 @@ rule get_spacing:
 
 rule get_radiomic_features:
     input:
-        files=lambda wc: correspondence_dict[wc.identifier],
-        mask=lambda wc: correspondence_dict_masks[wc.identifier],
-        radiomic_settings=output_radiomic_settings
+        files = lambda wc: correspondence_dict[wc.n_bins][wc.identifier],
+        mask = lambda wc: correspondence_dict_masks[wc.n_bins][wc.identifier],
+        radiomic_settings = lambda wc: output_radiomic_settings[wc.n_bins],
+        spacing = lambda wc: os.path.join(
+            output_paths["dataset_information"],
+            f"spacing.{list(patterns.keys())[0]}." + dataset_id),
+        configs=lambda wc: " ".join(output_radiomic_settings[wc.n_bins]),
     output:
-        os.path.join(output_paths["radiomic_features"],"{identifier}.json")
+        os.path.join(output_paths["radiomic_features"],"{identifier}.{n_bins}.json")
     params:
-        configs=" ".join(output_radiomic_settings),
         di_path=output_paths["dataset_information"],
         mod_spacing=list(patterns.keys())[0],
         cond_mult=cond_mult_abs,
@@ -205,7 +215,7 @@ rule get_radiomic_features:
         """
         python3 utils/extract-radiomic-features.py \
             --input_paths {input.files} \
-            --configs {params.configs} \
+            --configs {input.configs} \
             --mask_path {input.mask} \
             --target_spacing $(cat {params.di_path}/spacing.{params.mod_spacing}.{dataset_id} | tr ',' ' ') \
             --registration {registration} \

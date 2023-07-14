@@ -189,7 +189,7 @@ if __name__ == "__main__":
     if "all" in args.transforms[0]:
         transforms = transform_factory
     else:
-        transforms = args.transforms
+        transforms = {k:transform_factory[k] for k in args.transforms}
     if args.exclude_transforms is not None:
         transforms = [k for k in transforms
                       if k not in args.exclude_transforms]
