@@ -51,6 +51,9 @@ if __name__ == "__main__":
         choices=all_transforms)
     parser.add_argument(
         "--no_scale",dest="no_scale",action="store_true")
+    parser.add_argument(
+        "--additional_settings",dest="additional_settings",nargs="+",
+        help="Config for 'setting' tag. Must be provided as key1=v1 key2=v2")
     args = parser.parse_args()
 
     if "all" in args.features[0]:
@@ -62,6 +65,10 @@ if __name__ == "__main__":
         transforms = all_transforms
     else:
         transforms = args.transforms
+
+    for k_v in args.additional_settings:
+        k,v = k_v.split("=")
+        settings_dict_template["setting"][k] = v
 
     settings_dict = settings_dict_template.copy()
     settings_dict["featureClass"] = {
