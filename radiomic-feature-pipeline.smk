@@ -22,7 +22,8 @@ opt_args = {
     "conditional_multiplication": {},
     "additional_arguments":"",
     "transforms":["all"],
-    "features":["all"]
+    "features":["all"],
+    "additional_settings":[]
 }
 for k in opt_args:
     if k in config:
@@ -73,6 +74,12 @@ def cond_mult_idx(wc):
     else: 
         o = ""
     return o
+
+def get_additional_settings():
+    if len(config["additional_settings"]) > 0:
+        return f"--additional_settings {' '.join(config['additional_settings'])}"
+    else:
+        return ""
 
 for k in output_paths:
     if k != "aggregated_features":
@@ -169,11 +176,14 @@ rule get_radiomic_settings:
     output:
         os.path.join(output_paths["radiomic_settings"],"config-{mod}-{n_bins}-{dataset_id}.yaml")
     params:
-        scale=no_scale
+        scale=no_scale,
+        additional_settings=get_additional_settings(),
     shell:
         """
         python3 utils/voxel-features-to-radiomics-settings.py \
-            --input_path {input} {params.scale} > {output}
+            --input_path {input} \
+            {params.scale} \
+            {params.additional_settings} > {output}
         """
 
 rule get_spacing:
