@@ -9,6 +9,8 @@ patterns: # patterns that will be used to glob the input images
   t2w: "T2WAx/*1.nii.gz"
   adc: "ADC/*nii.gz"
   hbv: "DWI/*nii.gz"
+# number of bins for image discretization
+n_bins: [10,50,100]
 # very specific application: if an MRI from key has maximum > [0], it is multiplied by [1]
 # useful for ADC in different orders of magnitude
 conditional_multiplication: 
@@ -28,3 +30,5 @@ transforms:
   - "all" # specifies the pyradiomics transforms
 features: 
   - "all" # specifies the pyradiomics feature groups
+additional_settings:
+  - "minimumROISize=10" # additional settings for pyradiomics
