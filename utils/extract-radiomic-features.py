@@ -243,6 +243,9 @@ if __name__ == "__main__":
         help="Two values, [0] sets a threshold and if any value in the image \
             is above that threshold, then the whole image is multiplied by \
             [1].")
+    parser.add_argument(
+        '--minimum_lesion_size',dest="minimum_lesion_size",default=2,type=float,
+        help="Defines the minimum lesion size in voxels")
 
     args = parser.parse_args()
 
@@ -494,7 +497,8 @@ if __name__ == "__main__":
                 "\tCenter: {}\n\tClass: {}".format(center,cl),
                 verbose=args.verbose)
             time_c = time.time()
-            if np.count_nonzero(sitk.GetArrayFromImage(lesion_mask)) < 2:
+            mls = args.minimum_lesion_size
+            if np.count_nonzero(sitk.GetArrayFromImage(lesion_mask)) < mls:
                 print_verbose(
                     "\tOnly one voxel present in lesion, skipping",
                     verbose=args.verbose)
