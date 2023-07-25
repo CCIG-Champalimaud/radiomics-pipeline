@@ -35,6 +35,12 @@ additional_arguments = opt_args["additional_arguments"]
 transforms = opt_args["transforms"]
 features = opt_args["features"]
 
+if "minimumROISize" in additional_arguments:
+    minimum_size = int([x.split("=")[1] for x in additional_arguments.split(" ")
+                        if "minimumROISize" in x][0])
+else:
+    minimum_size = 2
+
 def shift(l,idxs):
     l = [l[i] for i in idxs]
     return l
@@ -230,6 +236,7 @@ rule get_radiomic_features:
             --target_spacing $(cat {params.di_path}/spacing.{params.mod_spacing}.{dataset_id} | tr ',' ' ') \
             --registration {registration} \
             {params.cond_mult} {params.cond_mult_idx} \
+            --minimum_lesion_size {minimum_size} \
             --output_path {output}
         """
 
